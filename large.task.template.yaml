@@ -1,0 +1,229 @@
+# large.task.template.yaml
+# ─────────────────────────────────────────────────────────────
+# SIZE RULES (large): 8+ files, multiple new abstractions, 3+ sessions
+# Autonomy default: human-in-loop
+# Human checkpoints: after EACH sub-task before next begins
+#
+# MANDATORY: Large tasks must be decomposed into sub-tasks.
+# Do not attempt single-pass implementation.
+# Each sub-task must be independently verifiable.
+# ─────────────────────────────────────────────────────────────
+
+task_id: T-YYYYMMDD-TODO       # auto-stamped by new-task.sh
+size: large
+autonomy: human-in-loop        # agent pauses after each sub-task for human review
+
+title: "TODO: Short imperative title"
+
+problem:
+  summary: >
+    TODO: 2–3 sentences — what is the systemic problem?
+  goal: >
+    TODO: 2–3 sentences — full scope of the solution.
+  non_goals:
+    - "TODO: Explicitly out of scope item 1"
+    - "TODO: Explicitly out of scope item 2"
+    - "TODO: Explicitly out of scope item 3"
+
+acceptance_criteria:
+  - criterion: "TODO: Criterion 1 — observable and testable"
+    test_names:
+      - "TODO: exact test name that validates this criterion"
+  - criterion: "TODO: Criterion 2"
+    test_names:
+      - "TODO: exact test name"
+  - criterion: "TODO: Criterion 3"
+    test_names:
+      - "TODO: exact test name"
+  - criterion: "TODO: Criterion 4 — test coverage criterion"
+    test_names:
+      - "TODO: exact test name"
+  - criterion: "TODO: Criterion 5 — logging/observability criterion"
+    test_names:
+      - "TODO: exact test name"
+  - criterion: "TODO: Criterion 6 — performance or load criterion if relevant"
+    test_names:
+      - "TODO: exact test name"
+  - criterion: "All API contracts for TODO:endpoints are unchanged or explicitly versioned"
+    test_names:
+      - "TODO: regression test name proving contract is preserved"
+
+constraints:
+  no_new_dependencies: true
+  preserve_api_contract: true
+  touch_only_listed_files: true
+  allowed_additions: []
+
+  # ── Dependency rule ──────────────────────────────────────
+  # allowed_additions:
+  #   - name: "TODO: package-name"
+  #     version: "TODO: semver range"
+  #     reason: "TODO: Why necessary, why no internal alternative"
+  #     already_in_repo: false
+  #     approved_by: "TODO: name"
+  #     approved_date: "TODO: YYYY-MM-DD"
+
+inputs_outputs:
+  inputs:
+    - "TODO: Input 1"
+    - "TODO: Input 2"
+  outputs:
+    - "TODO: Output 1"
+    - "TODO: Output 2"
+
+# ── Risk Assessment ──────────────────────────────────────────
+# blast_radius for large tasks: always declare "core" or "peripheral"
+#   — large tasks touching isolated code only are rare and should be re-evaluated
+#
+# blast_radius: core → explicit reminder that human-in-loop is non-negotiable
+# blast_radius: peripheral → human-in-loop still applies (large task default)
+# ─────────────────────────────────────────────────────────────
+risk_level: high               # large tasks default to high — justify downgrade if needed
+blast_radius: core             # core | peripheral — large tasks rarely isolated
+
+# security_reviewer: required for large tasks (blast_radius is always core or peripheral,
+# which nearly always triggers the risk-trigger pattern list).
+# See 00_policy.spec.md — Automatic Risk Escalation Triggers for the full list.
+security_reviewer: "TODO: name"
+
+# To downgrade risk_level from high, ALL FOUR fields are required together:
+# risk_override: justified
+# risk_override_reason: "TODO: explain why large task is not high risk"
+# risk_override_approved_by: "TODO: name"
+# risk_override_date: "TODO: YYYY-MM-DD"
+
+# ── Cross-task dependencies ──────────────────────────────────
+# List task_ids that must be completed and merged before this task can run.
+# validate-task.sh checks that each listed task has a confirmed handoff in specs/archive/.
+# Leave empty if no dependencies exist.
+depends_on_tasks: []
+# depends_on_tasks:
+#   - "T-20260220-add-types"    # must be merged first — this task uses its new types
+#   - "T-20260222-schema-migration"  # DB schema must be in place
+
+rollback:
+  strategy_summary: >
+    TODO: 1–2 sentences on overall rollback approach.
+    e.g. "Per-sub-task revert via git. No migrations. Feature flag controls rollout."
+  per_subtask:
+    subtask_a:
+      files_to_revert:
+        - "TODO: path/to/file.ts"
+      notes: "TODO: revert steps"
+    subtask_b:
+      files_to_revert:
+        - "TODO: path/to/file.ts"
+      depends_on_rollback: subtask_a  # if rolling back B also requires rolling back A
+      notes: "TODO: revert steps"
+    subtask_c:
+      files_to_revert:
+        - "TODO: path/to/file.ts"
+      depends_on_rollback: subtask_b
+      notes: "TODO: revert steps"
+    subtask_d:
+      files_to_revert:
+        - "TODO: path/to/file.ts"
+      notes: "TODO: revert steps (usually just delete new test files)"
+  migration_required: false    # if true: document full migration rollback here
+  migration_rollback: null
+  feature_flag: null           # populate if rollout is flag-controlled:
+    # name: "TODO: flag-name"
+    # default_state: "off"
+    # rollback_action: "Set flag to off to disable feature without code revert"
+
+# ─────────────────────────────────────────────────────────────
+# DECOMPOSITION — required for all large tasks
+# Rules:
+#   - Each sub-task must be independently verifiable
+#   - Sub-tasks must have explicit depends_on chains (no circular dependencies)
+#   - handoff_required: true → human reviews before next sub-task starts
+#   - Final sub-task: handoff_required: false (uses overall task handoff)
+#   - Sub-tasks may NOT be executed in parallel without explicit human approval
+# ─────────────────────────────────────────────────────────────
+decomposition:
+  subtasks:
+    - id: T-TODO-a
+      title: "TODO: Contracts / interfaces / types"
+      scope: "TODO: list files"
+      depends_on: null
+      autonomy: plan-then-confirm
+      blast_radius: isolated   # type definitions are usually low-blast
+      verify:
+        - "npm run lint"
+        - "npx tsc --noEmit"
+      handoff_required: true
+
+    - id: T-TODO-b
+      title: "TODO: Core logic"
+      scope: "TODO: list files"
+      depends_on: T-TODO-a
+      autonomy: plan-then-confirm
+      blast_radius: peripheral
+      verify:
+        - "npm run lint"
+        - "npx tsc --noEmit"
+        - "npm test -- <scope>"
+        - "npm run coverage -- --collectCoverageFrom=<scope>"
+      handoff_required: true
+
+    - id: T-TODO-c
+      title: "TODO: Integrations + end-to-end wiring"
+      scope: "TODO: list files"
+      depends_on: T-TODO-b
+      autonomy: plan-then-confirm
+      blast_radius: core       # wiring usually touches entry points / handlers
+      verify:
+        - "npm run lint"
+        - "npx tsc --noEmit"
+        - "npm test -- <scope>"
+        - "npm run test:integration"   # run if integration_tests section is populated
+      handoff_required: true
+
+    - id: T-TODO-d
+      title: "TODO: Tests + observability cleanup"
+      scope: "TODO: test files, logging verification"
+      depends_on: T-TODO-c
+      autonomy: plan-then-confirm
+      blast_radius: isolated
+      verify:
+        - "npm run lint"
+        - "npx tsc --noEmit"
+        - "npm test"
+        - "npm run coverage"
+      handoff_required: false  # final sub-task — deliver full 7-section task handoff
+
+# ─────────────────────────────────────────────────────────────
+# PARALLEL EXECUTION (optional — requires explicit human approval)
+# By default, sub-tasks run sequentially. To enable parallel execution
+# for sub-tasks that have no dependency relationship and touch disjoint
+# file sets, declare them here.
+#
+# Rules (enforced by policy — see 00_policy.spec.md):
+#   - Parallel sub-tasks MUST have no depends_on relationship
+#   - Parallel sub-tasks MUST touch completely disjoint file sets
+#   - Parallel sub-tasks MUST each have their own verification checks
+#   - Human must explicitly approve parallel execution before it begins
+#   - If any parallel sub-task fails, ALL parallel sub-tasks halt
+#   - Merge strategy defines how parallel results are combined
+# ─────────────────────────────────────────────────────────────
+parallel_execution: null
+# parallel_execution:
+#   enabled: true
+#   approved_by: "TODO: name"
+#   approved_date: "TODO: YYYY-MM-DD"
+#   parallel_groups:
+#     - group_id: "parallel-1"
+#       subtasks: ["T-TODO-b", "T-TODO-c"]   # these run concurrently
+#       file_ownership:
+#         T-TODO-b: ["path/to/coreService.ts", "path/to/coreService.test.ts"]
+#         T-TODO-c: ["path/to/handler.ts", "path/to/handler.test.ts"]
+#       merge_strategy: "independent"  # independent | sequential-merge
+#       # independent: each sub-task commits separately, no merge step
+#       # sequential-merge: results merged in a final integration step
+#       conflict_resolution: "halt-and-escalate"  # halt-and-escalate | manual-merge
+
+# ── Toolchain overrides (only if repo differs from CONVENTIONS.md) ──
+# toolchain_overrides:
+#   test_command: "npx vitest run"
+#   lint_command: "npx eslint ."
+#   typecheck_command: "npx tsc --noEmit"

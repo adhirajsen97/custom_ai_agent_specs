@@ -1,0 +1,227 @@
+# 03_execution.spec.yaml — Execution Plan (large)
+# ─────────────────────────────────────────────────────────────
+# SIZE: large — 8+ files, multiple abstractions, 3+ sessions
+# Autonomy: human-in-loop
+# Human checkpoint: AFTER each sub-task before next begins.
+# Agent must halt after every sub-task and deliver a partial handoff.
+# ─────────────────────────────────────────────────────────────
+
+task_id: T-YYYYMMDD-TODO        # must match 01_task.spec.yaml:task_id exactly
+on_failure: stop-and-report     # NEVER change this
+
+# ─────────────────────────────────────────────────────────────
+# FILE CHANGE PLAN — FULL TASK
+# Complete list of all files authorized to be touched across all sub-tasks.
+# The agent must not touch any file not in this list.
+# Each file must be assigned to exactly one sub-task.
+# ─────────────────────────────────────────────────────────────
+file_change_plan:
+  # Sub-task A — Contracts / interfaces / types
+  - path: "path/to/types.ts"
+    subtask: A
+    action: create
+    change_summary:
+      - "Define <Interface> and <Type> for new feature"
+
+  - path: "path/to/errors.ts"
+    subtask: A
+    action: modify
+    change_summary:
+      - "Add <NewErrorClass> for <specific failure case>"
+
+  # Sub-task B — Core logic
+  - path: "path/to/coreService.ts"
+    subtask: B
+    action: create
+    change_summary:
+      - "Implement <CoreFeature> using types from Sub-task A"
+
+  - path: "path/to/repo.ts"
+    subtask: B
+    action: modify
+    change_summary:
+      - "Add <new query method> returning Result<T, DbError>"
+
+  - path: "path/to/coreService.test.ts"
+    subtask: B
+    action: create
+    change_summary:
+      - "Full unit test coverage for coreService.ts"
+
+  # Sub-task C — Integrations + wiring
+  - path: "path/to/handler.ts"
+    subtask: C
+    action: modify
+    change_summary:
+      - "Wire new service into handler, add structured logging"
+
+  - path: "path/to/router.ts"
+    subtask: C
+    action: modify
+    change_summary:
+      - "Register new endpoint route"
+
+  - path: "path/to/handler.test.ts"
+    subtask: C
+    action: modify
+    change_summary:
+      - "Add integration-level tests for new endpoint"
+
+  # Sub-task D — Tests + observability cleanup
+  - path: "path/to/integration.test.ts"
+    subtask: D
+    action: create
+    change_summary:
+      - "End-to-end test for full feature flow"
+
+# ─────────────────────────────────────────────────────────────
+# SUB-TASKS
+# Each sub-task is independently verifiable.
+# Agent halts after each sub-task and awaits human review.
+# Next sub-task begins only after human confirms previous is clean.
+# ─────────────────────────────────────────────────────────────
+subtasks:
+  - id: T-TODO-a
+    title: "Contracts / interfaces / types"
+    depends_on: null
+    files:
+      - "path/to/types.ts"
+      - "path/to/errors.ts"
+    steps:
+      - "Read existing types.ts and errors.ts to understand current shape"
+      - "Create/extend types with new interfaces required by this feature"
+      - "Add error class for new failure case"
+      - "Run lint and type-check"
+    checks:
+      - command: "npm run lint"
+        pass_condition: "exit code 0"
+      - command: "npx tsc --noEmit"
+        pass_condition: "exit code 0"
+    handoff_required: true
+    partial_handoff_template: |
+      Sub-task A complete.
+      Files changed: [list]
+      Type-check output: [paste]
+      Lint output: [paste]
+      Ready for Sub-task B: yes/no
+
+  - id: T-TODO-b
+    title: "Core logic"
+    depends_on: T-TODO-a
+    files:
+      - "path/to/coreService.ts"
+      - "path/to/repo.ts"
+      - "path/to/coreService.test.ts"
+    steps:
+      - "Implement core service using contracts from Sub-task A"
+      - "Add repo method, following DB access pattern from CONVENTIONS.md"
+      - "Write full unit tests: happy, error, edge cases"
+      - "Run lint, type-check, and scoped tests"
+    checks:
+      - command: "npm run lint"
+        pass_condition: "exit code 0"
+      - command: "npx tsc --noEmit"
+        pass_condition: "exit code 0"
+      - command: "npm test -- --testPathPattern=coreService"
+        pass_condition: "all tests pass"
+      - command: "npm run coverage -- --collectCoverageFrom=path/to/coreService.ts"
+        pass_condition: "meets coverage threshold"
+    handoff_required: true
+    partial_handoff_template: |
+      Sub-task B complete.
+      Files changed: [list]
+      Test output: [paste]
+      Coverage output: [paste]
+      Ready for Sub-task C: yes/no
+
+  - id: T-TODO-c
+    title: "Integrations + end-to-end wiring"
+    depends_on: T-TODO-b
+    files:
+      - "path/to/handler.ts"
+      - "path/to/router.ts"
+      - "path/to/handler.test.ts"
+    steps:
+      - "Wire new service into handler — add structured logging at start/end"
+      - "Register route in router"
+      - "Extend handler tests for new endpoint"
+      - "Run lint, type-check, and scoped tests"
+    checks:
+      - command: "npm run lint"
+        pass_condition: "exit code 0"
+      - command: "npx tsc --noEmit"
+        pass_condition: "exit code 0"
+      - command: "npm test -- --testPathPattern=handler"
+        pass_condition: "all tests pass"
+    handoff_required: true
+    partial_handoff_template: |
+      Sub-task C complete.
+      Files changed: [list]
+      Test output: [paste]
+      Ready for Sub-task D: yes/no
+
+  - id: T-TODO-d
+    title: "Tests + observability cleanup"
+    depends_on: T-TODO-c
+    files:
+      - "path/to/integration.test.ts"
+    steps:
+      - "Write end-to-end integration test covering full feature flow"
+      - "Verify all logging paths produce expected structured output"
+      - "Run full test suite and coverage report"
+    checks:
+      - command: "npm run lint"
+        pass_condition: "exit code 0"
+      - command: "npx tsc --noEmit"
+        pass_condition: "exit code 0"
+      - command: "npm test"
+        pass_condition: "all tests pass, no regressions"
+      - command: "npm run coverage"
+        pass_condition: "full repo coverage meets or exceeds threshold"
+      # ── Required when package.json / package-lock.json / yarn.lock is in file_change_plan ──
+      # Uncomment and include this check — leaving it out is a validate-task.sh failure.
+      # - command: "npm audit --audit-level=high"
+      #   pass_condition: "exit code 0 — no high or critical severity vulnerabilities"
+    handoff_required: false  # final sub-task — use full task handoff format
+
+# ─────────────────────────────────────────────────────────────
+# INTEGRATION TESTS (required for large tasks that touch APIs, DB, or services)
+# If not applicable, justify with a comment and set: integration_tests: null
+# ─────────────────────────────────────────────────────────────
+integration_tests:
+  environment_required:
+    - "TODO: e.g. local-db, mocked-email-service, redis"
+  setup_command: "TODO: e.g. npm run db:seed -- --env=test"
+  teardown_command: "TODO: e.g. npm run db:reset -- --env=test"
+  command: "TODO: e.g. npm run test:integration"
+  pass_condition: "exit code 0, all integration tests pass"
+  timeout: "120s"              # max time before test suite is killed
+  # If integration tests are genuinely not applicable, replace above with:
+  # integration_tests: null
+  # justification: "TODO: explain why no integration tests are needed"
+
+# ─────────────────────────────────────────────────────────────
+# ROLLBACK PLAN — PER SUB-TASK
+# Rollback must be executable sub-task by sub-task if needed.
+# ─────────────────────────────────────────────────────────────
+rollback_steps:
+  subtask_a:
+    - "Delete path/to/types.ts if newly created"
+    - "Revert path/to/errors.ts to HEAD"
+    - "No downstream impact — contracts not yet consumed"
+
+  subtask_b:
+    - "Delete path/to/coreService.ts and coreService.test.ts"
+    - "Revert path/to/repo.ts to HEAD"
+    - "Roll back Sub-task A changes if needed (see above)"
+
+  subtask_c:
+    - "Revert path/to/handler.ts and handler.test.ts to HEAD"
+    - "Revert path/to/router.ts to HEAD"
+    - "Roll back B and A if needed"
+
+  subtask_d:
+    - "Delete path/to/integration.test.ts"
+    - "No source changes in this sub-task — safe to discard"
+
+  migration_required: false   # if true: document full migration rollback here

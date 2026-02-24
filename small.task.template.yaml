@@ -1,0 +1,99 @@
+# small.task.template.yaml
+# ─────────────────────────────────────────────────────────────
+# SIZE RULES (small): 1–3 files, no new abstractions, 1 session
+# Autonomy default: fully-autonomous
+# Human checkpoints: none required
+#
+# BLAST RADIUS NOTE:
+# If blast_radius is set to "core" → task is treated as medium for
+# autonomy and checkpoint purposes, regardless of file count.
+# See 00_policy.spec.md for blast_radius override rules.
+# ─────────────────────────────────────────────────────────────
+
+task_id: T-YYYYMMDD-TODO       # auto-stamped by new-task.sh
+size: small
+autonomy: fully-autonomous     # small tasks proceed without plan confirmation
+
+title: "TODO: Short imperative title"
+
+problem:
+  summary: >
+    TODO: One sentence — what is broken or missing?
+  goal: >
+    TODO: One sentence — what does done look like?
+  non_goals:
+    - "TODO: What are you explicitly NOT doing?"
+
+acceptance_criteria:
+  - criterion: "TODO: Criterion 1 — observable, testable"
+    test_names:
+      - "TODO: exact test name that validates this criterion"
+  - criterion: "TODO: Criterion 2"
+    test_names:
+      - "TODO: exact test name that validates this criterion"
+
+constraints:
+  no_new_dependencies: true
+  preserve_api_contract: true
+  touch_only_listed_files: true
+  allowed_additions: []
+
+  # ── Dependency rule ──────────────────────────────────────
+  # If you must add a dependency, list it here with justification:
+  # allowed_additions:
+  #   - name: "lodash"
+  #     version: "^4.17.21"
+  #     reason: "Already used elsewhere in repo — not a net-new dep"
+  #     already_in_repo: true
+  #     approved_by: "TODO: name"
+  #     approved_date: "TODO: YYYY-MM-DD"
+
+inputs_outputs:
+  inputs:
+    - "TODO: e.g. POST /endpoint — payload shape"
+  outputs:
+    - "TODO: e.g. Single updated DB record"
+
+# ── Risk Assessment ──────────────────────────────────────────
+# blast_radius: isolated | peripheral | core
+#   isolated  — change is self-contained, no shared code paths
+#   peripheral — change touches shared utilities or mid-tier services
+#   core       — change touches auth, DB schema, entry points, or core libs
+#                → forces human-in-loop autonomy regardless of size
+#
+# If blast_radius is "core", add (ALL FOUR are required together):
+#   risk_override: justified
+#   risk_override_reason: "TODO: explain why core-file change is still small/low-risk"
+#   risk_override_approved_by: "TODO: name"
+#   risk_override_date: "TODO: YYYY-MM-DD"
+# ─────────────────────────────────────────────────────────────
+risk_level: low                # low | medium | high
+blast_radius: isolated         # isolated | peripheral | core
+
+# security_reviewer: required when any file_change_plan path matches a risk-trigger pattern
+# (auth/, db/migrations/, .env*, package.json, middleware/, etc.).
+# See 00_policy.spec.md — Automatic Risk Escalation Triggers for the full list.
+# Leave "" if no risk-trigger paths exist in file_change_plan.
+security_reviewer: ""
+
+# ── Cross-task dependencies ──────────────────────────────────
+# List task_ids that must be completed and merged before this task can run.
+# validate-task.sh checks that each listed task has a confirmed handoff in specs/archive/.
+# Leave empty if no dependencies exist.
+depends_on_tasks: []
+# depends_on_tasks:
+#   - "T-20260220-add-types"    # must be merged first — this task uses its new types
+
+rollback:
+  files_to_revert:
+    - "TODO: path/to/file.ts"
+  migration_required: false
+  migration_rollback: null     # only populate if migration_required: true
+  feature_flag: null           # only populate if a feature flag was used
+  notes: "Revert listed files to HEAD — no DB changes, no migration required"
+
+# ── Toolchain overrides (only if repo differs from CONVENTIONS.md) ──
+# toolchain_overrides:
+#   test_command: "npx vitest run"
+#   lint_command: "npx eslint ."
+#   typecheck_command: "npx tsc --noEmit"

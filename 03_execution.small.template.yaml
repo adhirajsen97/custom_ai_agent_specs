@@ -1,0 +1,85 @@
+# 03_execution.spec.yaml — Execution Plan (small)
+# ─────────────────────────────────────────────────────────────
+# SIZE: small — 1–3 files, no new abstractions, single session
+# Autonomy: fully-autonomous (no plan confirmation required)
+# This file is the agent's contract for WHAT to change and HOW to verify it.
+# ─────────────────────────────────────────────────────────────
+
+task_id: T-YYYYMMDD-TODO        # must match 01_task.spec.yaml:task_id exactly
+on_failure: stop-and-report     # NEVER change this — silent-continue is not permitted
+
+# ─────────────────────────────────────────────────────────────
+# FILE CHANGE PLAN
+# List every file the agent is authorized to touch.
+# The agent must NOT touch any file not listed here.
+# For each file: describe the exact change in 1–3 bullets.
+# If you cannot describe the change precisely, the spec is not ready.
+# ─────────────────────────────────────────────────────────────
+file_change_plan:
+  - path: "path/to/target.ts"
+    action: modify              # modify | create | delete
+    change_summary:
+      - "Add idempotency check before DB insert using event_id lookup"
+      - "Return existing record on duplicate instead of re-inserting"
+
+  - path: "path/to/target.test.ts"
+    action: modify
+    change_summary:
+      - "Add test: duplicate event_id returns existing record without inserting"
+      - "Add test: missing event_id field returns ValidationError"
+
+# ─────────────────────────────────────────────────────────────
+# EXECUTION STEPS
+# Ordered list of what the agent does, in sequence.
+# Steps must be granular enough that a human can follow along.
+# ─────────────────────────────────────────────────────────────
+steps:
+  - id: step-1
+    description: "Read and understand current implementation of <function> in <file>"
+    type: read-only
+
+  - id: step-2
+    description: "Implement <change description> in path/to/target.ts"
+    type: write
+    file: "path/to/target.ts"
+
+  - id: step-3
+    description: "Write tests covering happy path, failure path, and edge case for <function>"
+    type: write
+    file: "path/to/target.test.ts"
+
+  - id: step-4
+    description: "Run lint and tests — capture full output"
+    type: verify
+    commands:
+      - "npm run lint"
+      - "npm test -- --testPathPattern=path/to/target.test.ts"
+
+# ─────────────────────────────────────────────────────────────
+# VERIFICATION CHECKS
+# These are the commands the agent MUST run and MUST pass before handoff.
+# Agent must capture and include actual command output in handoff.
+# Claiming a check passes without output is a policy violation.
+# ─────────────────────────────────────────────────────────────
+checks:
+  - id: check-lint
+    command: "npm run lint"
+    pass_condition: "exit code 0, no errors or warnings"
+    scope: "full repo lint"
+
+  - id: check-tests
+    command: "npm test -- --testPathPattern=path/to/target.test.ts"
+    pass_condition: "all tests pass, no skipped tests introduced"
+    scope: "scoped to changed files"
+
+  - id: check-coverage
+    command: "npm run coverage -- --collectCoverageFrom=path/to/target.ts"
+    pass_condition: "coverage does not drop below threshold in jest.config.ts"
+    scope: "changed files only"
+
+  # ── Required when package.json / package-lock.json / yarn.lock is in file_change_plan ──
+  # Uncomment and include this check — leaving it out is a validate-task.sh failure.
+  # - id: check-audit
+  #   command: "npm audit --audit-level=high"
+  #   pass_condition: "exit code 0 — no high or critical severity vulnerabilities"
+  #   scope: "full dependency tree"

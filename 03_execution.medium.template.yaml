@@ -1,0 +1,150 @@
+# 03_execution.spec.yaml — Execution Plan (medium)
+# ─────────────────────────────────────────────────────────────
+# SIZE: medium — 3–8 files, ≤1 new module, 1–2 sessions
+# Autonomy: plan-then-confirm (agent presents plan, human approves, then executes)
+# Human checkpoint: agent presents this completed file as the plan for approval.
+# ─────────────────────────────────────────────────────────────
+
+task_id: T-YYYYMMDD-TODO        # must match 01_task.spec.yaml:task_id exactly
+on_failure: stop-and-report     # NEVER change this
+
+# ─────────────────────────────────────────────────────────────
+# FILE CHANGE PLAN
+# Every file the agent is authorized to touch — no others.
+# action: modify | create | delete
+# For create: also specify what module/export it introduces
+# ─────────────────────────────────────────────────────────────
+file_change_plan:
+  - path: "path/to/service.ts"
+    action: modify
+    change_summary:
+      - "Add <new behavior> to <existing function>"
+      - "Wire new dependency from <other module>"
+
+  - path: "path/to/newModule.ts"
+    action: create
+    introduces: "<ClassName> implementing <Interface>"
+    change_summary:
+      - "New module encapsulating <responsibility>"
+      - "Exports: <ExportA>, <ExportB>"
+
+  - path: "path/to/handler.ts"
+    action: modify
+    change_summary:
+      - "Update handler to call new service method"
+      - "Add structured logging for new code path"
+
+  - path: "path/to/service.test.ts"
+    action: modify
+    change_summary:
+      - "Add tests for new behavior: happy path, error path, edge case"
+
+  - path: "path/to/newModule.test.ts"
+    action: create
+    change_summary:
+      - "Unit tests for new module: all exported functions covered"
+
+# ─────────────────────────────────────────────────────────────
+# EXECUTION STEPS
+# Agent follows these in order. Each step must be independently verifiable.
+# write steps must have a corresponding check before the next session.
+# ─────────────────────────────────────────────────────────────
+steps:
+  - id: step-1
+    description: "Audit current implementation — understand integration points before writing"
+    type: read-only
+    files_read:
+      - "path/to/service.ts"
+      - "path/to/handler.ts"
+
+  - id: step-2
+    description: "Create new module path/to/newModule.ts with <responsibility>"
+    type: write
+    file: "path/to/newModule.ts"
+    checkpoint: false
+
+  - id: step-3
+    description: "Modify service.ts to integrate new module"
+    type: write
+    file: "path/to/service.ts"
+    checkpoint: false
+
+  - id: step-4
+    description: "Modify handler.ts to call updated service method + add logging"
+    type: write
+    file: "path/to/handler.ts"
+    checkpoint: false
+
+  - id: step-5
+    description: "Write tests for newModule.ts — happy, error, edge"
+    type: write
+    file: "path/to/newModule.test.ts"
+    checkpoint: false
+
+  - id: step-6
+    description: "Extend service.test.ts with new behavior tests"
+    type: write
+    file: "path/to/service.test.ts"
+    checkpoint: false
+
+  - id: step-7
+    description: "Run all checks — capture full output — halt on any failure"
+    type: verify
+
+# ─────────────────────────────────────────────────────────────
+# ROLLBACK PLAN
+# Concrete revert steps — not prose. Used if a check fails post-merge.
+# ─────────────────────────────────────────────────────────────
+rollback_steps:
+  - "git revert <commit> for path/to/handler.ts"
+  - "git revert <commit> for path/to/service.ts"
+  - "Delete path/to/newModule.ts and path/to/newModule.test.ts"
+  - "No migration required — DB schema unchanged"
+
+# ─────────────────────────────────────────────────────────────
+# VERIFICATION CHECKS
+# Run ALL checks. Do not skip. Capture actual output.
+# ─────────────────────────────────────────────────────────────
+checks:
+  - id: check-lint
+    command: "npm run lint"
+    pass_condition: "exit code 0, no errors or warnings"
+    scope: "full repo"
+
+  - id: check-unit-tests
+    command: "npm test -- --testPathPattern='newModule|service'"
+    pass_condition: "all tests pass, no skipped tests introduced by this task"
+    scope: "changed files and new files"
+
+  - id: check-coverage
+    command: "npm run coverage -- --collectCoverageFrom='path/to/newModule.ts,path/to/service.ts'"
+    pass_condition: "coverage meets or exceeds threshold in jest.config.ts"
+    scope: "new and modified source files"
+
+  - id: check-types
+    command: "npx tsc --noEmit"
+    pass_condition: "exit code 0, no type errors"
+    scope: "full repo"
+
+  # ── Required when package.json / package-lock.json / yarn.lock is in file_change_plan ──
+  # Uncomment and include this check — leaving it out is a validate-task.sh failure.
+  # - id: check-audit
+  #   command: "npm audit --audit-level=high"
+  #   pass_condition: "exit code 0 — no high or critical severity vulnerabilities"
+  #   scope: "full dependency tree"
+
+# ─────────────────────────────────────────────────────────────
+# INTEGRATION TESTS (optional for medium — required if task touches APIs, DB, or services)
+# If not applicable, set: integration_tests: null
+# If applicable, uncomment and fill in each field.
+# ─────────────────────────────────────────────────────────────
+integration_tests: null
+# integration_tests:
+#   environment_required:
+#     - "local-db"              # e.g. PostgreSQL running on localhost
+#     - "mocked-email-service"  # e.g. local mock of external email API
+#   setup_command: "npm run db:seed -- --env=test"  # run before integration tests
+#   teardown_command: "npm run db:reset -- --env=test"  # run after integration tests
+#   command: "npm run test:integration -- --testPathPattern=<scope>"
+#   pass_condition: "exit code 0, all integration tests pass"
+#   timeout: "60s"             # max time before test suite is killed
