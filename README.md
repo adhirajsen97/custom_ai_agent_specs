@@ -1,193 +1,315 @@
-# Multi-Agent SDLC Spec System (Coordinator + Team Agents)
+# Multi-Team Product Pipeline
 
-A spec-driven, multi-agent workflow that helps you go from **raw idea → shipped product** by assigning AI agents to the roles you normally have to wear yourself (product, design, engineering, QA, GTM, ops), all orchestrated by a **Coordinator** that keeps the project coherent across sessions.
+A coordinator-driven multi-agent system for taking a project from idea to launch. Uses Claude Code's native agent orchestration — no manual copy-pasting between sessions.
 
----
+## What This Is
 
-## Contents
-- [Why this project?](#why-this-project)
-- [What’s included](#whats-included)
-- [Roles (the “teams”)](#roles-the-teams)
-- [How to use](#how-to-use)
-- [How to follow the workflow](#how-to-follow-the-workflow)
-- [Behind the scenes: how Coordinator + agents actually work](#behind-the-scenes-how-coordinator--agents-actually-work)
-- [SDLC mapping (for beginners + industry folks)](#sdlc-mapping-for-beginners--industry-folks)
-- [Tips](#tips)
-- [License](#license)
+A set of Claude Code configuration files (custom agents, skills, rules) that turn a single `claude --agent coordinator` session into a full product development pipeline. The Coordinator agent interviews you, builds a plan, and dispatches specialized team agents — each working in its own isolated context — and processes their handoffs automatically.
 
----
+**Teams available:**
+- `product-strategist` — Market research, competitive analysis, personas, PRD, pricing
+- `design-lead` — User flows, wireframe specs, design system, accessibility
+- `engineer` — Architecture, implementation, testing (bridges to Engineering Spec conventions)
+- `qa-security` — Test strategy, security audit, compliance checklist
+- `data-analyst` — KPIs, event tracking plan, analytics stack, A/B testing
+- `gtm-lead` — Positioning, channel strategy, launch plan, growth loops, customer success
+- `ops-legal` — Legal outlines, compliance, operational runbooks, cost model
 
-## Why this project?
+## Quick Start
 
-Most “AI coding” tools optimize for writing code faster. That’s useful, but it doesn’t solve the harder problem: **getting from an idea to a shipped product when you’re wearing every hat**. :contentReference[oaicite:2]{index=2}
+**1. Install** — Copy `.claude/` and `CLAUDE.md` into your project:
 
-This system exists because the real bottleneck isn’t code — it’s **coordination**: choosing the right thing to build, preserving decisions, keeping teams aligned, and not losing context between “roles.” :contentReference[oaicite:3]{index=3}
+```bash
+cp -r /path/to/multi_spec_system/.claude/ your-project/.claude/
+cp /path/to/multi_spec_system/CLAUDE.md your-project/CLAUDE.md
+```
 
-It’s designed as a **spec layer** (policies + prompts + handoff contracts) that sits above any particular model/tool, so you can swap the engine without rebuilding your workflow. :contentReference[oaicite:4]{index=4}
+Or as a git submodule:
 
----
+```bash
+cd your-project
+git submodule add https://github.com/adhirajsen97/custom_ai_agent_specs.git .claude-specs
+cp -r .claude-specs/.claude .claude
+cp .claude-specs/CLAUDE.md CLAUDE.md
+```
 
-## What’s included
+**2. Run** — Start the coordinator in your project directory:
 
-At a high level, the system is:
-- A **Coordinator** agent that interviews you, clarifies goals, and builds/adapts a project pipeline. :contentReference[oaicite:5]{index=5}
-- Multiple **team agents** (Product, Design, Engineering, QA, etc.) that each produce one “deliverable.”
-- A **mandatory handoff format** so every output becomes the next input (no missing context, no silent contradictions). :contentReference[oaicite:6]{index=6}
-- A lightweight **persistent state** approach (YAML snapshots + decision log + pipeline plan) so you can work across many clean chat sessions without bloating context. :contentReference[oaicite:7]{index=7}
+```bash
+cd your-project
+claude --agent coordinator
+```
 
-> Core principle: **each team agent’s output is the next team’s input through a binding contract.** :contentReference[oaicite:8]{index=8}
+**3. Follow the coordinator** — It will interview you, propose a plan, and ask for confirmation before dispatching each team. You stay in control at every step.
 
----
+## Full Lifecycle Walkthrough
 
-## Roles (the teams)
+Here's what a typical session looks like from start to finish, using a micro-scale project as an example.
 
-The default pipeline looks like: :contentReference[oaicite:9]{index=9}
+### Step 1: Start the Coordinator
 
-1. **Coordinator**
-   - Interviews you, distills the idea, sets goals/outcomes, and generates the pipeline. :contentReference[oaicite:10]{index=10}
-   - Acts as a *reasoner* (not just a router): it checks conflicts, changes the pipeline if decisions change, and pulls teams earlier/later when needed. :contentReference[oaicite:11]{index=11}
+```bash
+claude --agent coordinator
+```
 
-2. **Product & Strategy**
-   - Market/user framing, competitive notes, PRD, feature prioritization. :contentReference[oaicite:12]{index=12}
+The coordinator greets you and begins the discovery interview. It asks about your idea, target users, problem being solved, constraints, and existing assets. The depth adapts to complexity — a micro project gets 2-3 follow-ups, a large project gets 10+.
 
-3. **Design & UX**
-   - User flows, wireframes, design system constraints. :contentReference[oaicite:13]{index=13}
+### Step 2: Review the Pipeline Plan
 
-4. **Engineering**
-   - Architecture + implementation plan + code execution tasks. :contentReference[oaicite:14]{index=14}
+After the interview, the coordinator proposes a plan:
 
-5. **QA & Security**
-   - Test strategy, risk review, security audit/compliance checklist. :contentReference[oaicite:15]{index=15}
+```
+### Project Summary
+Name: TaskFlow
+One-liner: A lightweight CLI task manager for developers
+Scale: Micro (single-feature utility, <100 users, solo developer)
 
-6. **Data & Analytics**
-   - KPIs, tracking plan, dashboards/telemetry plan. :contentReference[oaicite:16]{index=16}
+### Pipeline Plan
+| # | Team               | Why                                  | Focus Area            |
+|---|--------------------|--------------------------------------|-----------------------|
+| 1 | product-strategist | Define scope, personas, feature list | CLI UX, core commands |
+| 2 | engineer           | Build the tool                       | Go CLI, local storage |
 
-7. **GTM & Customer Success**
-   - Launch plan, growth loops, onboarding/support posture. :contentReference[oaicite:17]{index=17}
+Teams skipped: design-lead (CLI, no visual UI), qa-security (no user data),
+data-analyst (no tracking needed), gtm-lead (personal tool), ops-legal (no legal surface)
 
-8. **Operations & Legal**
-   - ToS/privacy basics, runbooks, cost modeling, operational readiness. :contentReference[oaicite:18]{index=18}
+### Recommended First Team
+product-strategist — Define the core command set and user persona before building.
+```
 
-### Two important behavior rules
-- **Decisions flow downward and are binding** (upstream constraints apply downstream; disagreements escalate explicitly). :contentReference[oaicite:19]{index=19}
-- **Evidence over vibes**: teams should cite sources/assumptions instead of producing confident fluff. :contentReference[oaicite:20]{index=20}
+You can approve, adjust the team list, or ask questions. The coordinator pushes back if your changes seem risky but ultimately defers to you.
 
----
+### Step 3: Team Dispatch
 
-## How to use
+When you confirm, the coordinator dispatches the first team:
 
-### Step 1 — Setup
-Add this repo inside your project folder (copy it, or add as a submodule/subtree).
+```
+Dispatching product-strategist now. They will:
+- Research existing CLI task managers
+- Define target user persona
+- Prioritize the core command set
+- Produce a PRD with success metrics
+
+This runs in an isolated context. You'll see their output when they're done.
+```
+
+The team agent works autonomously — reading your project files, producing deliverables, and writing them to `deliverables/`. When it finishes, it presents its handoff and states: *"My work is complete. The coordinator will now validate this handoff and dispatch the next team in the pipeline."*
+
+### Step 4: Coordinator Processes the Return
+
+The coordinator validates the handoff and presents a clear transition:
+
+```
+### Status
+Pipeline: 1 of 2 teams complete
+
+### What Just Happened
+product-strategist returned with 4 deliverables:
+- deliverables/research_brief.md — 5 competitors analyzed
+- deliverables/user_personas.md — 1 persona (solo dev, 50+ tasks/week)
+- deliverables/feature_priorities.md — 8 commands prioritized via RICE
+- deliverables/prd.md — MVP scope: add, list, done, delete, priority flag
+
+Handoff validated: all 6 sections present, decisions have rationales,
+deliverables have file paths.
+
+Key decisions (BINDING for engineer):
+- Go CLI with local JSON storage
+- 5 core commands for MVP, 3 deferred to v2
+- Success metric: <200ms response time for all commands
+
+### Recommended Next Action
+Dispatch engineer. They will receive the PRD, command specs, and
+persona as binding upstream decisions.
+
+### Pipeline Overview
+| # | Team               | Status   | Key Output                      |
+|---|--------------------|----------|---------------------------------|
+| 1 | product-strategist | complete | PRD, personas, feature priority |
+| 2 | engineer           | ready    | Waiting — dispatch now?         |
+```
+
+You review and confirm. The coordinator dispatches the next team with all upstream decisions included.
+
+### Step 5: Pipeline Complete
+
+After all teams finish, the coordinator produces a final summary:
+
+```
+### Status
+Pipeline complete — all 2 teams finished.
+
+### Project Summary — TaskFlow
+All deliverables are in deliverables/. Key files:
+- deliverables/prd.md — Product requirements
+- deliverables/feature_priorities.md — Prioritized command list
+- deliverables/engineering_handoff.md — Architecture decisions, test results
+
+### Cross-Cutting Decisions
+| Decision                    | Made By            | Affects     |
+|-----------------------------|--------------------|-------------|
+| Go CLI + local JSON storage | product-strategist | engineer    |
+| 5 core commands for MVP     | product-strategist | engineer    |
+| Cobra framework + Viper     | engineer           | future work |
+
+### Open Items
+| Item                          | Severity | Owner |
+|-------------------------------|----------|-------|
+| v2 command set not prioritized | advisory | user  |
+
+Pipeline state saved to .pipeline/state.yaml.
+```
+
+## Skills Reference
+
+Skills are shortcuts you can use inside a coordinator session. They're invoked with a `/` prefix.
+
+### `/discover` — Start or Restart Discovery
+
+Use when starting a new project or when you want to re-interview from scratch.
+
+```
+/discover
+```
+
+If a project state already exists, it asks whether to continue or start fresh. Runs the full 5-phase interview and writes `.pipeline/state.yaml` on completion.
+
+**When to use:** Beginning of a new project. Also useful if your project direction has changed significantly and you want a clean re-plan.
+
+### `/progress` — Check Pipeline Status
+
+Use to see where you are at any point.
+
+```
+/progress
+```
+
+Shows a status table, open questions, active escalations, pipeline health check (staleness, drift, blockers, scope creep), and a recommended next action.
+
+**When to use:** Returning to a session after a break. Checking whether a blocking question has been resolved. Getting a bird's-eye view before deciding what to do next.
+
+### `/handoff` — Generate or Validate Handoffs
+
+Use to validate a team's handoff or generate a blank template.
+
+```
+/handoff product-strategist deliverables/handoff.md    # Validate existing handoff
+/handoff engineer                                       # Generate blank template
+```
+
+Checks all 6 required sections, validates that decisions have rationales, deliverables have file paths, and open questions have severity ratings.
+
+**When to use:** Before confirming a team's output, to double-check completeness. When manually producing a handoff for a team you ran outside the pipeline.
+
+## Session Management
+
+### Resuming a Session
+
+The coordinator persists state in two places:
+- **Agent memory** — automatically loaded when you start `claude --agent coordinator`
+- **`.pipeline/state.yaml`** — current pipeline state, readable by you and the coordinator
+
+Just run `claude --agent coordinator` in your project directory and it picks up where you left off. Use `/progress` to see the current state.
+
+### What `.pipeline/` Contains
+
+```
 your-project/
-├─ agent-specs/                         # this repo (policies, prompts, templates)
-│  ├─ **all files from this repo**
+  .pipeline/
+    state.yaml          <- Current pipeline state (teams, statuses, decisions)
+    decision_log.md     <- Append-only history of all decisions made
+  deliverables/
+    product/            <- Product team deliverables
+    design/             <- Design team deliverables
+    engineering/        <- Engineering deliverables
+    ...
+```
 
+**`state.yaml`** is overwritten each session — it's always the current state. **`decision_log.md`** is append-only and capped at ~50 entries (oldest get compressed into a History section).
 
-### Step 2 — Coordinator session
-Open a new chat with your preferred model/tool and paste the Coordinator prompt.
-I recommend using a higher end model for the planning or for the coordinator persona
+You can read these files directly to inspect pipeline state outside of a coordinator session.
 
-Tell it:
-- your idea (1–3 paragraphs)
-- constraints (time, budget, tech stack, platform)
-- “I want you to act as the Coordinator and build the pipeline + first directives.”
+## Handling Edge Cases
 
-The Coordinator should output:
-- distilled project statement + goals
-- initial pipeline (which agents, in what order)
-- “next session prompts” for each team agent
+### Incomplete Handoff
 
-### Step 3 — Begin development (team sessions)
-Take the Coordinator’s directive for the *next team* and paste it into a **new clean chat**.
+If a team returns a handoff missing required sections, the coordinator rejects it and tells you exactly what's missing:
 
-That team agent produces:
-- its deliverable (e.g., PRD, wireframes, architecture)
-- a **handoff doc** (what the Coordinator must know next)
+```
+Handoff validation FAILED for design-lead:
+- Decisions Made: 2 decisions missing "Alternatives Considered"
+- Deliverables: wireframe_specs.md listed but no file path
+- Open Questions: 1 question missing severity rating
 
-### Step 4 — Connect multiple agents (handoff loop)
-After each team session:
-1. Copy the **handoff doc**
-2. Start a fresh chat with the **Coordinator**
-3. Paste the handoff doc
-4. The Coordinator decides next steps, resolves conflicts, and emits the next team prompt(s)
+The team needs to fix these before we can proceed.
+```
 
-Repeat until shipped.
+### Blocking Escalation
 
----
+If a team encounters something it can't resolve (missing critical input, contradictory requirements), it raises a blocking escalation. The coordinator presents it with options:
 
-## How to follow the workflow
+```
+ESCALATION — blocking (from engineer)
+Trigger: PRD specifies real-time sync but product-strategist chose local JSON storage
+Impact: Cannot implement sync without a server component
+Options:
+  A) Drop real-time sync from MVP — ship local-only first
+  B) Add a simple sync server — increases scope to "small" scale
+Recommendation: Option A — aligns with micro scale and solo dev constraints
 
-### The “one loop” you repeat
+Which option do you want to go with?
+```
 
-(You) Idea / Update
-→ (Coordinator) clarifies + plans + assigns next role
-→ (Team Agent) produces deliverable + handoff
-→ (Coordinator) updates state + assigns next role
+### Backward Escalation
 
+If a downstream team discovers an upstream decision is flawed, the coordinator mediates:
 
-### Minimal checklist per cycle
-- [ ] Did the team output match upstream constraints? :contentReference[oaicite:21]{index=21}
-- [ ] Did it include assumptions/sources where needed? :contentReference[oaicite:22]{index=22}
-- [ ] Did it produce a handoff doc that a new session can understand? :contentReference[oaicite:23]{index=23}
-- [ ] Did the Coordinator update the pipeline if the project changed? :contentReference[oaicite:24]{index=24}
+```
+BACKWARD ESCALATION (from engineer → product-strategist)
+Issue: Specified "offline-first" but 3 of 5 core features require API calls
+The coordinator will generate a targeted amendment for product-strategist
+to clarify the offline scope — not a full re-run.
+```
 
----
+### Skipping or Reordering Teams
 
-## Behind the scenes: how Coordinator + agents actually work
+Tell the coordinator directly: "Skip qa-security" or "Run gtm-lead before engineer." It will adjust the pipeline and log the change in the decision log. It may push back if the reorder creates dependency issues.
 
-### 1) Coordinator is a “reasoner,” not a traffic cop
-Instead of blindly routing tasks, the Coordinator evaluates whether new decisions require pipeline changes (skip teams, reorder teams, add compliance earlier, etc.). :contentReference[oaicite:25]{index=25}
+### Revisiting a Completed Team's Output
 
-### 2) Binding contracts prevent drift
-Outputs aren’t “nice-to-have notes.” They become constraints:
-- Product decisions → Design constraints
-- Design specs → Engineering requirements
-- Engineering architecture → QA audit surface :contentReference[oaicite:26]{index=26}
+Tell the coordinator: "I want to revise the product strategy." It will assess what's changed, determine if downstream teams are affected, and either generate a targeted amendment or re-dispatch the team with updated context.
 
-### 3) Context stays small on purpose (anti-bloat)
-Instead of carrying huge chat history, state is kept as compact snapshots:
-- **Project state**: overwritten each session (current snapshot)
-- **Decision log**: append-only but compresses over time
-- **Pipeline plan**: overwritten; completed teams collapse to one-liners :contentReference[oaicite:27]{index=27}
+## Customization
 
-This lets “session 8 load as fast as session 1.” :contentReference[oaicite:28]{index=28}
+### Adding a New Team Agent
 
-### 4) Evidence requirements reduce “strategy fluff”
-Agents must attach sources or explicit assumptions for claims (market, UX, growth projections, etc.). :contentReference[oaicite:29]{index=29}
+1. Create `.claude/agents/new-team.md` with the agent definition (frontmatter + system prompt)
+2. Add `new-team` to the coordinator's `tools` list in its frontmatter
+3. Add the team to the coordinator's Team Roster and pipeline order descriptions
 
----
+### Adding a New Skill
 
-## SDLC mapping (for beginners + industry folks)
+1. Create `.claude/skills/skill-name/SKILL.md`
+2. Skills are auto-discovered — no registration needed
 
-### If you’re not familiar with SDLC
-Just follow the pipeline order. Think of it like:
-1. **Figure out what to build** (Product)
-2. **Decide how it should work** (Design)
-3. **Build it** (Engineering)
-4. **Make sure it doesn’t break / isn’t risky** (QA/Security)
-5. **Decide how you’ll measure success** (Data/Analytics)
-6. **Launch + support it** (GTM/CS + Ops/Legal)
+### Adjusting Rigor by Team
 
-The Coordinator will keep you from skipping steps accidentally when the project needs them. :contentReference[oaicite:30]{index=30}
+Change the `model` field in each agent's frontmatter:
+- `opus` — high rigor, complex reasoning (coordinator, engineer)
+- `sonnet` — good balance for most teams
+- `haiku` — fast, lightweight, template-driven work (ops-legal)
 
-### If you *are* familiar with SDLC
-Use it like a modular SDLC router:
-- Skip Design for API-only products (Coordinator can collapse teams when appropriate). :contentReference[oaicite:31]{index=31}
-- Pull Ops/Legal earlier when compliance shows up.
-- Run QA/Security in parallel once architecture stabilizes.
-- Swap in your own internal templates (PRD format, ADRs, threat models) while keeping the same handoff contract pattern. :contentReference[oaicite:32]{index=32}
+## Architecture Reference
 
----
+For contributors or anyone wanting to understand the internals:
 
-## Tips
-- Treat handoffs as **interfaces**: clear inputs/outputs beat long prose. :contentReference[oaicite:33]{index=33}
-- Don’t let downstream teams override upstream decisions silently — escalate conflicts back to Coordinator. :contentReference[oaicite:34]{index=34}
-- Keep “state” lightweight and “deliverables” detailed. :contentReference[oaicite:35]{index=35}
-- Require evidence/assumptions for anything that smells like strategy. :contentReference[oaicite:36]{index=36}
+- **`CLAUDE.md`** — Shared contract loaded by all agents (~60 lines). Contains the handoff format, core rules, and escalation summary.
+- **`.claude/rules/`** — Detailed policies (escalation protocol, handoff validation template). Loaded on demand.
+- **`.claude/agents/`** — 8 agent definitions. Each is self-contained — knows its role, workflow, evidence standards, and output format.
+- **`.claude/skills/`** — 3 user-facing shortcuts (`/discover`, `/progress`, `/handoff`).
+- **`.claude/settings.json`** — `SubagentStop` hook that reminds the coordinator to validate handoffs after team agents complete.
+- **`reference/`** — Original spec files preserved as source material. The Engineering Spec at `reference/3. Engineering Spec/` is the authoritative reference the `engineer` agent bridges to.
 
----
+**Dispatch flow:** Coordinator calls `Agent(product-strategist, prompt="...")` → team works in isolated context → returns result to coordinator → coordinator validates, updates state, presents transition to user → user confirms → next team dispatched.
 
-## License
-Add your license here.
-
-Recommended layout:
+**State persistence:** Dual — agent memory (auto-loaded by Claude Code) + `.pipeline/state.yaml` and `.pipeline/decision_log.md` (inspectable files in your project directory).

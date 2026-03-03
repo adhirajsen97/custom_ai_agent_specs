@@ -1,2 +1,4 @@
 .DS_Store
-.claude/
+.claude/plan.md
+.claude/settings.local.json
+.pipeline/

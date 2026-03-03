@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '\\n[Coordinator] Team agent completed. Validate the handoff has all 6 required sections (Decisions Made, Deliverables Produced, Constraints Established, Open Questions/Risks, Recommendations for Next Team, Assumptions) before proceeding.'"
+          }
+        ]
+      }
+    ]
+  }
+}
